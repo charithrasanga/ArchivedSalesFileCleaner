@@ -1,6 +1,7 @@
 ﻿using ArchivedSalesFileCleaner.Shared;
 using Microsoft.Extensions.Options;
 using System.Configuration;
+using System.Globalization;
 
 namespace ArchivedSalesFileCleaner.Services
 {
@@ -9,6 +10,7 @@ namespace ArchivedSalesFileCleaner.Services
         private readonly string directoryPath;
         private readonly int retentionPeriodInDays;
         private readonly bool removeFilePhysically;
+        private readonly FileOperationType configuredFileOperationType;
 
         public FileSelectionService(IOptions<DeleteSettings> settings)
         {
@@ -22,31 +24,41 @@ namespace ArchivedSalesFileCleaner.Services
                 throw new ArgumentException($"'{nameof(settings.Value.SourceDirectory)}' cannot be null or whitespace.", nameof(settings));
             }
 
-            if (!Directory.Exists(settings.Value.SourceDirectory))
-            {
-                throw new ArgumentException($"Directory '{(settings.Value.SourceDirectory)}' is not a valid directory make sure directory exist in your file system.", nameof(settings));
-            }
+          
 
             directoryPath = settings.Value.SourceDirectory;
             retentionPeriodInDays = settings.Value.RetentionPeriodInDays;
             removeFilePhysically = settings.Value.RemoveFilePhysically;
+
+            configuredFileOperationType = removeFilePhysically ? FileOperationType.Delete : FileOperationType.Archive;
         }
 
-        public List<string> GetFiles()
+        public List<FileDeletionRequest> GetFiles()
         {
             var cutoffDate = DateTime.Now.AddDays(-retentionPeriodInDays);
 
             var filesToDelete = Directory.GetFiles(directoryPath, "*.zip")
                 .Where(file => IsOlderThanCutoffDate(file, cutoffDate))
                 .ToList();
+            List<FileDeletionRequest> requestList = new();
 
-            return filesToDelete;
+            foreach (var file in filesToDelete)
+            {
+                requestList.Add(new FileDeletionRequest
+                {                   
+                    fileOperationType = configuredFileOperationType,
+                    filePath = file,
+                });
+            }
+
+            return requestList;
         }
 
         private bool IsOlderThanCutoffDate(string filePath, DateTime cutoffDate)
         {
-            var fileName = Path.GetFileNameWithoutExtension(filePath);
-            if (!DateTime.TryParse(fileName, out DateTime fileDate))
+             var fileName = Path.GetFileNameWithoutExtension(filePath).Replace(" ",string.Empty);
+
+            if (!DateTime.TryParseExact(fileName, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fileDate))
             {
                 return false;
             }
@@ -55,8 +67,4 @@ namespace ArchivedSalesFileCleaner.Services
         }
     }
 
-    public class FileOperationService
-    {
-
-    }
 }
