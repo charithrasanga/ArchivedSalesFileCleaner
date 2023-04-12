@@ -1,66 +1,91 @@
-﻿using System.Configuration;
+﻿using ArchivedSalesFileCleaner.Shared;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Globalization;
+using System.IO;
+using System.Linq;
 
 namespace ArchivedSalesFileCleaner.Services
 {
     public class FileSelectionService
     {
         private readonly string directoryPath;
+        private readonly int retentionPeriodInDays;
+        private readonly bool removeFilePhysically;
+        private readonly FileOperationType configuredFileOperationType;
+        private readonly ILogger<FileSelectionService> logger;
 
-        public FileSelectionService(string directoryPath)
+        public FileSelectionService(IOptions<DeleteSettings> settings, ILogger<FileSelectionService> logger)
         {
-            if (string.IsNullOrWhiteSpace(directoryPath))
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+            if (settings == null)
             {
-                throw new ArgumentException($"'{nameof(directoryPath)}' cannot be null or whitespace.", nameof(directoryPath));
+                throw new ArgumentNullException(nameof(settings));
             }
 
-            if (!Directory.Exists(directoryPath))
+            if (string.IsNullOrWhiteSpace(settings.Value.SourceDirectory))
             {
-                throw new ArgumentException($"Directory '{(directoryPath)}' is not a valid direcotry name.", nameof(directoryPath));
+                throw new ArgumentException($"'{nameof(settings.Value.SourceDirectory)}' cannot be null or whitespace.", nameof(settings));
             }
 
-            this.directoryPath = directoryPath;
+            directoryPath = settings.Value.SourceDirectory;
+            retentionPeriodInDays = settings.Value.RetentionPeriodInDays;
+            removeFilePhysically = settings.Value.RemoveFilePhysically;
+
+            configuredFileOperationType = removeFilePhysically ? FileOperationType.Delete : FileOperationType.Archive;
+
+            logger.LogDebug("FileSelectionService created with settings: {@DeleteSettings}", settings.Value);
         }
 
-        public List<string> GetFiles(int retentionPeriod)
+        public List<FileDeletionRequest> GetFiles()
         {
-            List<string> oldFiles = new List<string>();
-            DateTime cutoffDate = DateTime.Now.AddDays(-retentionPeriod);
+            logger.LogInformation("Getting files from directory: {DirectoryPath}", directoryPath);
 
-            try
+            var cutoffDate = DateTime.Now.AddDays(-retentionPeriodInDays);
+
+            var filesToDelete = Directory.GetFiles(directoryPath, "*.zip")
+                .Where(file => IsOlderThanCutoffDate(file, cutoffDate))
+                .ToList();
+            List<FileDeletionRequest> requestList = new();
+
+            foreach (var file in filesToDelete)
             {
-                string retentionPeriodString = ConfigurationManager.AppSettings["RetentionPeriodInDays"];
-                if (!int.TryParse(retentionPeriodString, out retentionPeriod))
-                {
-                    retentionPeriod = 30; // Default to 30 days if retention period is not specified or invalid
-                }
+                logger.LogInformation("File {FilePath} is marked for deletion", file);
 
-                DirectoryInfo directory = new DirectoryInfo(directoryPath);
-                FileInfo[] files = directory.GetFiles("*.zip");
-
-                foreach (FileInfo file in files)
+                requestList.Add(new FileDeletionRequest
                 {
-                    DateTime fileDate;
-                    if (DateTime.TryParseExact(file.Name.Substring(0, 10), "yyyy-MMM-dd", null, System.Globalization.DateTimeStyles.None, out fileDate))
-                    {
-                        if (fileDate < cutoffDate)
-                        {
-                            oldFiles.Add(file.FullName);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                // Handle any exceptions that occur when getting the list of files
-                Console.WriteLine($"Error getting list of files: {ex.Message}");
+                    fileOperationType = configuredFileOperationType,
+                    filePath = file,
+                });
             }
 
-            return oldFiles;
+            logger.LogInformation("{Count} files found for deletion in directory: {DirectoryPath}", requestList.Count, directoryPath);
+
+            return requestList;
         }
-    }
 
-    public class FileOperationService
-    {
+        private bool IsOlderThanCutoffDate(string filePath, DateTime cutoffDate)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(filePath).Replace(" ", string.Empty);
 
+            if (!DateTime.TryParseExact(fileName, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fileDate))
+            {
+                logger.LogWarning("Could not parse date from file name: {FileName}", fileName);
+                return false;
+            }
+
+            var isOlder = fileDate < cutoffDate;
+
+            if (isOlder)
+            {
+                logger.LogInformation("File {FilePath} is older than the retention period and will be deleted", filePath);
+            }
+
+            return isOlder;
+        }
     }
 }
