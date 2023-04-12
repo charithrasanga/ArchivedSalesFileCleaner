@@ -1,21 +1,25 @@
 ﻿using ArchivedSalesFileCleaner.Shared;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ArchivedSalesFileCleaner.Services
 {
-
     public class FileOperationService
     {
         private readonly string archivePath;
+        private readonly ILogger<FileOperationService> logger;
 
-        public FileOperationService(IOptions<DeleteSettings> settings)
+        public FileOperationService(ILogger<FileOperationService> logger, IOptions<DeleteSettings> settings)
         {
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
             if (settings == null)
             {
                 throw new ArgumentNullException(nameof(settings));
@@ -29,10 +33,10 @@ namespace ArchivedSalesFileCleaner.Services
                 }
                 catch (Exception ex)
                 {
-
-                    throw new ArgumentException($"Failed to create directory. '{(settings.Value.SourceDirectory)}' is not a valid directory. Make sure directory exist in your file system or ensure program is authorized to create the directory.\n{ex.Message}", nameof(settings));
+                    var errorMessage = $"Failed to create directory '{settings.Value.ArchivePath}'. Make sure directory exist in your file system or ensure program is authorized to create the directory.";
+                    logger.LogError(ex, errorMessage);
+                    throw new ArgumentException(errorMessage, nameof(settings));
                 }
-
             }
 
             archivePath = settings.Value.ArchivePath;
@@ -40,7 +44,7 @@ namespace ArchivedSalesFileCleaner.Services
 
         public List<FileDeletionResponse> ProcessFiles(List<FileDeletionRequest> fileDeletionRequests)
         {
-            List<FileDeletionResponse> responseList = new();
+            var responseList = new List<FileDeletionResponse>();
 
             foreach (var file in fileDeletionRequests)
             {
@@ -48,12 +52,12 @@ namespace ArchivedSalesFileCleaner.Services
                 {
                     if (file.fileOperationType == FileOperationType.Delete)
                     {
-                       
-                            File.Delete(file.filePath);
- 
+                        logger.LogInformation($"Deleting file '{file.filePath}'...");
+                        File.Delete(file.filePath);
                     }
                     else
                     {
+                        logger.LogInformation($"Moving file '{file.filePath}' to archive directory '{archivePath}'...");
                         File.Move(file.filePath, Path.Combine(archivePath, Path.GetFileName(file.filePath)));
                     }
 
@@ -63,9 +67,14 @@ namespace ArchivedSalesFileCleaner.Services
                         fileOperationType = file.fileOperationType,
                         fileOperationStatus = FileOperationStatus.Success
                     });
+
+                    logger.LogInformation($"File operation '{file.fileOperationType}' completed successfully for file '{file.filePath}'.");
+
                 }
                 catch (Exception ex)
                 {
+                    logger.LogError(ex, $"Failed to perform file operation '{file.fileOperationType}' on file '{file.filePath}'. Error message: {ex.Message}");
+                    logger.LogError(Environment.NewLine);
                     responseList.Add(new FileDeletionResponse
                     {
                         filePath = file.filePath,
@@ -80,5 +89,3 @@ namespace ArchivedSalesFileCleaner.Services
         }
     }
 }
-
-

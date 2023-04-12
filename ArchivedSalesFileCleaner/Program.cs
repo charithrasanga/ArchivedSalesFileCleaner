@@ -4,30 +4,35 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
-using System;
+using System.Text;
 
 internal class Program
 {
     static void Main(string[] args)
     {
-        var configuration = new ConfigurationBuilder()
-     .AddJsonFile("appsettings.json")
-     .Build();
+        var builder = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json");
+
+        var configuration = builder.Build();
+
 
         Log.Logger = new LoggerConfiguration()
-     .ReadFrom.Configuration(configuration.GetSection("Serilog"))
-     .CreateLogger();
+                                .ReadFrom.Configuration(configuration)
+                                .CreateLogger();
+
 
         try
         {
-            Log.Information("Starting up");
+            Log.Information($"=====>>>> Starting up <<<<<=====");
+
             var serviceProvider = new ServiceCollection()
                 .AddLogging(loggingBuilder =>
                 {
                     loggingBuilder.ClearProviders();
                     loggingBuilder.AddSerilog(dispose: true);
                 })
-                .AddSingleton<IConfiguration>(configuration).Configure<DeleteSettings>(configuration.GetSection("DeleteSettings"))
+                .AddSingleton<IConfiguration>(configuration)
+                .Configure<DeleteSettings>(configuration.GetSection("DeleteSettings"))
                 .AddTransient<FileSelectionService>()
                 .AddTransient<FileOperationService>()
                 .BuildServiceProvider();
@@ -43,13 +48,37 @@ internal class Program
             var filesToDelete = fileSelectionService.GetFiles();
             var deletionResponses = fileOperationService.ProcessFiles(filesToDelete);
 
-            // Rest of the code...
+            // Generate summary
+            var totalFilesSelected = filesToDelete.Count;
+            var totalFilesDeleted = deletionResponses.Count(r => r.fileOperationType == FileOperationType.Delete);
+            var totalFilesArchived = deletionResponses.Count(r => r.fileOperationType == FileOperationType.Archive);
+            var totalErrors = deletionResponses.Count(r => r.fileOperationStatus == FileOperationStatus.Error);
 
-            Log.Information("Shutting down");
+            var summary = new StringBuilder();
+           
+            summary.AppendLine($"Total files selected: {totalFilesSelected}");
+            summary.AppendLine($"Total files deleted: {totalFilesDeleted}");
+            summary.AppendLine($"Total files archived: {totalFilesArchived}");
+            summary.AppendLine($"Total errors: {totalErrors}");
+            summary.AppendLine(Environment.NewLine);
+          
+         
+            Log.Information("\n======================================================\n");
+            Log.Information("Summary: {@Summary}", new
+            {
+                TotalFilesSelected = totalFilesSelected,
+                TotalFilesDeleted = totalFilesDeleted,
+                TotalFilesArchived = totalFilesArchived,
+                TotalErrors = totalErrors
+            });
+
+            Log.Information("\n======================================================");
+         
+            Log.Information("Shutting down\n\n");
         }
         catch (Exception ex)
         {
-            Log.Fatal(ex, "Application terminated unexpectedly");
+            Log.Fatal(ex, "Application terminated unexpectedly\n\n");
         }
         finally
         {
