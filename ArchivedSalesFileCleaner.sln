@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33424.131
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchivedSalesFileCleaner", "ArchivedSalesFileCleaner\ArchivedSalesFileCleaner.csproj", "{F3B2EC6C-FC8A-415B-9E80-871C629A64EB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArchivedSalesFileCleaner.Services", "ArchivedSalesFileCleaner.Services\ArchivedSalesFileCleaner.Services.csproj", "{9BE95A62-AD46-4408-B75F-82A51B6BEC1A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F3B2EC6C-FC8A-415B-9E80-871C629A64EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F3B2EC6C-FC8A-415B-9E80-871C629A64EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F3B2EC6C-FC8A-415B-9E80-871C629A64EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F3B2EC6C-FC8A-415B-9E80-871C629A64EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BE95A62-AD46-4408-B75F-82A51B6BEC1A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BE95A62-AD46-4408-B75F-82A51B6BEC1A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BE95A62-AD46-4408-B75F-82A51B6BEC1A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BE95A62-AD46-4408-B75F-82A51B6BEC1A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2ECDF3EC-437A-4CE6-8FC1-A2A10C35E77D}
+	EndGlobalSection
+EndGlobal
