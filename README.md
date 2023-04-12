@@ -67,3 +67,6 @@ Serilog configuration is done through an `appsettings.json` file, which is a con
 -   `WriteTo`: The list of sinks that the logs will be written to. Serilog provides several built-in sinks, such as the console sink and the file sink. Each sink can have its own configuration options.
 -   `Enrich`: The list of enrichers that add additional information to the log events. Serilog provides several built-in enrichers, such as the `FromLogContext` enricher, which adds properties from the log context to the log event.
 -   `Properties`: Additional properties that will be added to all log events.
+
+#### Icon 
+Icon was downloaded from [https://www.iconfinder.com](https://www.iconfinder.com/icons/2462966/delete_eliminate_garbage_litter_recycle_remove_trash_icon)
