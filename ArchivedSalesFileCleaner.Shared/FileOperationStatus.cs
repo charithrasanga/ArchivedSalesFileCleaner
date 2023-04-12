@@ -2,7 +2,8 @@
 {
     public enum FileOperationStatus
     {
-        Delete,
-        Archive
+        Pending,
+        Success,
+        Error
     }
 }
